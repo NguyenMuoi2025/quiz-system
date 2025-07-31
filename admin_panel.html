@@ -472,12 +472,120 @@ hocsinh3@gmail.com,HS003,123456,Lê Văn C,12A2</textarea>
                         <td>${new Date(student.created_at).toLocaleDateString('vi-VN')}</td>
                         <td>
                             <button onclick="editStudent(${student.id})" class="success">✏️</button>
+                            <button onclick="changePassword(${student.id})" style="background: #ffc107; color: #000;">🔒</button>
                             <button onclick="deleteStudent(${student.id})" class="danger">🗑️</button>
                         </td>
                     `;
                     tbody.appendChild(row);
                 });
 
+            } catch (error) {
+                showMessage('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        function editStudent(id) {
+            // Tìm thông tin học sinh hiện tại
+            const row = event.target.closest('tr');
+            const cells = row.cells;
+            const currentEmail = cells[0].textContent;
+            const currentStudentId = cells[1].textContent;
+            const currentName = cells[2].textContent;
+            const currentClass = cells[3].textContent;
+            
+            // Tạo form edit inline
+            cells[0].innerHTML = `<input type="email" id="editEmail_${id}" value="${currentEmail}" style="width: 100%; padding: 5px;">`;
+            cells[1].innerHTML = `<input type="text" id="editStudentId_${id}" value="${currentStudentId}" style="width: 100%; padding: 5px;">`;
+            cells[2].innerHTML = `<input type="text" id="editName_${id}" value="${currentName}" style="width: 100%; padding: 5px;">`;
+            cells[3].innerHTML = `<select id="editClass_${id}" style="width: 100%; padding: 5px;">${document.getElementById('studentClass').innerHTML}</select>`;
+            
+            // Set selected value
+            setTimeout(() => {
+                document.getElementById(`editClass_${id}`).value = currentClass;
+            }, 100);
+            
+            cells[5].innerHTML = `
+                <button onclick="saveStudentEdit(${id})" class="success">💾</button>
+                <button onclick="cancelStudentEdit(${id}, '${currentEmail}', '${currentStudentId}', '${currentName}', '${currentClass}')" class="danger">❌</button>
+            `;
+        }
+
+        async function saveStudentEdit(id) {
+            const newEmail = document.getElementById(`editEmail_${id}`).value.trim();
+            const newStudentId = document.getElementById(`editStudentId_${id}`).value.trim();
+            const newName = document.getElementById(`editName_${id}`).value.trim();
+            const newClass = document.getElementById(`editClass_${id}`).value;
+            
+            if (!newEmail || !newStudentId || !newName) {
+                showMessage('Vui lòng điền đầy đủ thông tin', 'error');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .update({
+                        email: newEmail,
+                        student_id: newStudentId,
+                        name: newName,
+                        class: newClass
+                    })
+                    .eq('id', id)
+                    .select();
+
+                if (error) {
+                    showMessage('Lỗi cập nhật học sinh: ' + error.message, 'error');
+                } else {
+                    showMessage('Cập nhật học sinh thành công!', 'success');
+                    loadStudents(); // Reload to show updated data
+                }
+            } catch (error) {
+                showMessage('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        function cancelStudentEdit(id, originalEmail, originalStudentId, originalName, originalClass) {
+            const row = event.target.closest('tr');
+            const cells = row.cells;
+            
+            cells[0].textContent = originalEmail;
+            cells[1].textContent = originalStudentId;
+            cells[2].textContent = originalName;
+            cells[3].textContent = originalClass;
+            cells[5].innerHTML = `
+                <button onclick="editStudent(${id})" class="success">✏️</button>
+                <button onclick="changePassword(${id})" style="background: #ffc107; color: #000;">🔒</button>
+                <button onclick="deleteStudent(${id})" class="danger">🗑️</button>
+            `;
+        }
+
+        function changePassword(id) {
+            const row = event.target.closest('tr');
+            const studentName = row.cells[2].textContent;
+            
+            const newPassword = prompt(`Nhập mật khẩu mới cho ${studentName}:`);
+            if (newPassword === null || newPassword.trim() === '') {
+                return;
+            }
+
+            updatePassword(id, newPassword.trim());
+        }
+
+        async function updatePassword(id, newPassword) {
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .update({
+                        password: newPassword
+                    })
+                    .eq('id', id)
+                    .select();
+
+                if (error) {
+                    showMessage('Lỗi thay đổi mật khẩu: ' + error.message, 'error');
+                } else {
+                    showMessage('Thay đổi mật khẩu thành công!', 'success');
+                }
             } catch (error) {
                 showMessage('Lỗi: ' + error.message, 'error');
             }
@@ -711,8 +819,61 @@ hocsinh3@gmail.com,HS003,123456,Lê Văn C,12A2</textarea>
         }
 
         function editClass(id) {
-            // TODO: Implement edit class functionality
-            alert('Tính năng sửa lớp sẽ được thêm sau!');
+            // Tìm thông tin lớp hiện tại
+            const row = event.target.closest('tr');
+            const cells = row.cells;
+            const currentClassName = cells[0].textContent;
+            const currentTeacherName = cells[1].textContent;
+            
+            // Tạo form edit inline
+            cells[0].innerHTML = `<input type="text" id="editClassName_${id}" value="${currentClassName}" style="width: 100%; padding: 5px;">`;
+            cells[1].innerHTML = `<input type="text" id="editTeacherName_${id}" value="${currentTeacherName}" style="width: 100%; padding: 5px;">`;
+            cells[4].innerHTML = `
+                <button onclick="saveClassEdit(${id})" class="success">💾</button>
+                <button onclick="cancelClassEdit(${id}, '${currentClassName}', '${currentTeacherName}')" class="danger">❌</button>
+            `;
+        }
+
+        async function saveClassEdit(id) {
+            const newClassName = document.getElementById(`editClassName_${id}`).value.trim();
+            const newTeacherName = document.getElementById(`editTeacherName_${id}`).value.trim();
+            
+            if (!newClassName || !newTeacherName) {
+                showMessage('Vui lòng điền đầy đủ thông tin', 'error');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('classes')
+                    .update({
+                        class_name: newClassName,
+                        teacher_name: newTeacherName
+                    })
+                    .eq('id', id)
+                    .select();
+
+                if (error) {
+                    showMessage('Lỗi cập nhật lớp: ' + error.message, 'error');
+                } else {
+                    showMessage('Cập nhật lớp thành công!', 'success');
+                    loadClasses(); // Reload to show updated data
+                }
+            } catch (error) {
+                showMessage('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        function cancelClassEdit(id, originalClassName, originalTeacherName) {
+            const row = event.target.closest('tr');
+            const cells = row.cells;
+            
+            cells[0].textContent = originalClassName;
+            cells[1].textContent = originalTeacherName;
+            cells[4].innerHTML = `
+                <button onclick="editClass(${id})" class="success">✏️</button>
+                <button onclick="deleteClass(${id})" class="danger">🗑️</button>
+            `;
         }
 
         function downloadTemplate() {
