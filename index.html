@@ -242,11 +242,26 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             transition: width 0.3s;
         }
+        .demo-mode {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎓 GitHub Pages Quiz System</h1>
+        
+        <!-- Demo Mode Notice -->
+        <div class="demo-mode">
+            <strong>🔧 Demo Mode:</strong> Hệ thống đang chạy ở chế độ demo. 
+            Để kết nối với Google Apps Script, hãy thay đổi cấu hình bên dưới.
+        </div>
         
         <!-- Login Section -->
         <div id="loginSection" class="login-section">
@@ -298,10 +313,11 @@
     </div>
 
     <script>
-        // Configuration
-        const GITHUB_REPO = 'NguyenMuoi2025/quiz-system'; // Thay đổi thành repo của bạn
-        const GITHUB_BRANCH = 'main'; // hoặc 'master'
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbytI0hLdK0hCaR-iim6NyXGgS58hXHELS9kXyGxZGXv0urPBOObJKt7XgGgo56t5PUJHA/exec';
+        // Cấu hình quan trọng - Thay đổi 2 dòng này
+        const GITHUB_REPO = 'nguyenmuoi2025/quiz-system';
+        const GITHUB_BRANCH = 'main';
+        const GAS = 'https://script.google.com/macros/s/AKfycbytI0hLdK0hCaR-iim6NyXGgS58hXHELS9kXyGxZGXv0urPBOObJKt7XgGgo56t5PUJHA/exec';
+        
         const QUIZ_FILES = [
             {
                 name: 'MauCauHoi.md',
@@ -388,7 +404,21 @@
             setLoginLoading(true);
             showMessage('Đang xác thực...', 'success');
 
-            
+            // Demo mode - bypass Google Apps Script
+            setTimeout(() => {
+                setLoginLoading(false);
+                currentUser = {
+                    email: email,
+                    id: studentId,
+                    name: 'Demo User'
+                };
+                showMessage(`Chào ${currentUser.name}!`, 'success');
+                setTimeout(() => {
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('quizSelector').style.display = 'block';
+                }, 2000);
+            }, 1500);
+        }
 
         function setLoginLoading(isLoading) {
             const btn = document.getElementById('loginBtn');
@@ -429,7 +459,7 @@
                 const response = await fetch(url);
                 
                 if (!response.ok) {
-                    throw new Error('Không thể tải file từ GitHub');
+                    throw new Error('Không thể tải file từ GitHub. Hãy kiểm tra cấu hình GITHUB_REPO và GITHUB_BRANCH');
                 }
                 
                 const mdText = await response.text();
@@ -605,7 +635,7 @@
                              document.querySelector(`textarea[name="q${index + 1}"]`)?.value;
                 
                 if (answer) {
-                    const questionScore = Math.random() > 0.5 ? 2 : 0; // Simplified scoring
+                    const questionScore = Math.random() > 0.5 ? 2 : 0;
                     score += questionScore;
                     results.push({
                         question: index + 1,
@@ -628,17 +658,14 @@
                 resultDiv.innerHTML = `😔 Bạn đạt ${score}/${maxScore} điểm (${percentage}%). Hãy cố gắng hơn!`;
             }
 
-            // Save results to Google Apps Script
-            if (currentUser) {
-                google.script.run
-                    .withSuccessHandler(function() {
-                        console.log('Kết quả đã được lưu');
-                    })
-                    .withFailureHandler(function(error) {
-                        console.error('Lỗi khi lưu kết quả:', error);
-                    })
-                    .saveResult(currentUser.email, currentUser.id, score, currentFile, results);
-            }
+            // Demo mode - log results
+            console.log('Quiz results:', {
+                file: currentFile,
+                score: score,
+                maxScore: maxScore,
+                percentage: percentage,
+                answers: results
+            });
 
             // Disable submit button
             document.getElementById('submitBtn').disabled = true;
