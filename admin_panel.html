@@ -508,41 +508,57 @@ hocsinh3@gmail.com,HS003,123456,Lê Văn C,12A2</textarea>
         document.getElementById('addClassForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const className = document.getElementById('className').value;
-            const teacherName = document.getElementById('teacherName').value;
+            const className = document.getElementById('className').value.trim();
+            const teacherName = document.getElementById('teacherName').value.trim();
+
+            if (!className || !teacherName) {
+                showMessage('Vui lòng điền đầy đủ thông tin', 'error');
+                return;
+            }
 
             try {
+                console.log('Adding class:', { class_name: className, teacher_name: teacherName });
+                
                 const { data, error } = await supabase
                     .from('classes')
                     .insert([{
                         class_name: className,
                         teacher_name: teacherName
-                    }]);
+                    }])
+                    .select();
 
                 if (error) {
+                    console.error('Supabase error:', error);
                     showMessage('Lỗi: ' + error.message, 'error');
                 } else {
+                    console.log('Class added successfully:', data);
                     showMessage('Thêm lớp thành công!', 'success');
                     document.getElementById('addClassForm').reset();
                     loadClasses();
                     loadStats();
                 }
             } catch (error) {
+                console.error('Error adding class:', error);
                 showMessage('Lỗi: ' + error.message, 'error');
             }
         });
 
         async function loadClasses() {
             try {
+                console.log('Loading classes...');
+                
                 const { data, error } = await supabase
                     .from('classes')
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) {
+                    console.error('Error loading classes:', error);
                     showMessage('Lỗi tải danh sách lớp: ' + error.message, 'error');
                     return;
                 }
+
+                console.log('Classes loaded:', data);
 
                 const tbody = document.getElementById('classesTableBody');
                 const select = document.getElementById('studentClass');
@@ -552,28 +568,33 @@ hocsinh3@gmail.com,HS003,123456,Lê Văn C,12A2</textarea>
                 select.innerHTML = '<option value="">Chọn lớp</option>';
                 filterSelect.innerHTML = '<option value="">Tất cả lớp</option>';
 
-                data.forEach(cls => {
-                    // Add to table
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${cls.class_name}</td>
-                        <td>${cls.teacher_name}</td>
-                        <td>-</td>
-                        <td>${new Date(cls.created_at).toLocaleDateString('vi-VN')}</td>
-                        <td>
-                            <button onclick="editClass(${cls.id})" class="success">✏️</button>
-                            <button onclick="deleteClass(${cls.id})" class="danger">🗑️</button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
+                if (data && data.length > 0) {
+                    data.forEach(cls => {
+                        // Add to table
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${cls.class_name || 'N/A'}</td>
+                            <td>${cls.teacher_name || 'N/A'}</td>
+                            <td>-</td>
+                            <td>${cls.created_at ? new Date(cls.created_at).toLocaleDateString('vi-VN') : 'N/A'}</td>
+                            <td>
+                                <button onclick="editClass(${cls.id})" class="success">✏️</button>
+                                <button onclick="deleteClass(${cls.id})" class="danger">🗑️</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
 
-                    // Add to selects
-                    const option = `<option value="${cls.class_name}">${cls.class_name}</option>`;
-                    select.innerHTML += option;
-                    filterSelect.innerHTML += option;
-                });
+                        // Add to selects
+                        const option = `<option value="${cls.class_name}">${cls.class_name}</option>`;
+                        select.innerHTML += option;
+                        filterSelect.innerHTML += option;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Chưa có lớp nào</td></tr>';
+                }
 
             } catch (error) {
+                console.error('Error in loadClasses:', error);
                 showMessage('Lỗi: ' + error.message, 'error');
             }
         }
@@ -666,6 +687,32 @@ hocsinh3@gmail.com,HS003,123456,Lê Văn C,12A2</textarea>
             } catch (error) {
                 showMessage('Lỗi: ' + error.message, 'error');
             }
+        }
+
+        async function deleteClass(id) {
+            if (!confirm('Bạn có chắc muốn xóa lớp này?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('classes')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) {
+                    showMessage('Lỗi xóa lớp: ' + error.message, 'error');
+                } else {
+                    showMessage('Xóa lớp thành công!', 'success');
+                    loadClasses();
+                    loadStats();
+                }
+            } catch (error) {
+                showMessage('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        function editClass(id) {
+            // TODO: Implement edit class functionality
+            alert('Tính năng sửa lớp sẽ được thêm sau!');
         }
 
         function downloadTemplate() {
