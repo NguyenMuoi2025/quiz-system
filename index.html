@@ -301,6 +301,7 @@
         // Configuration
         const GITHUB_REPO = 'NguyenMuoi2025/quiz-system'; // Thay đổi thành repo của bạn
         const GITHUB_BRANCH = 'main'; // hoặc 'master'
+        onst GAS_URL = 'https://script.google.com/macros/s/AKfycbytI0hLdK0hCaR-iim6NyXGgS58hXHELS9kXyGxZGXv0urPBOObJKt7XgGgo56t5PUJHA/exec';
         const QUIZ_FILES = [
             {
                 name: 'MauCauHoi.md',
@@ -387,36 +388,7 @@
             setLoginLoading(true);
             showMessage('Đang xác thực...', 'success');
 
-            try {
-                // Call Google Apps Script
-                google.script.run
-                    .withSuccessHandler(function(result) {
-                        setLoginLoading(false);
-                        if (result && result.success) {
-                            currentUser = {
-                                email: email,
-                                id: studentId,
-                                name: result.name
-                            };
-                            showMessage(`Chào ${result.name}!`, 'success');
-                            setTimeout(() => {
-                                document.getElementById('loginSection').style.display = 'none';
-                                document.getElementById('quizSelector').style.display = 'block';
-                            }, 2000);
-                        } else {
-                            showMessage('Thông tin đăng nhập không đúng', 'error');
-                        }
-                    })
-                    .withFailureHandler(function(error) {
-                        setLoginLoading(false);
-                        showMessage('Lỗi kết nối: ' + error.message, 'error');
-                    })
-                    .checkStudent(email, studentId, password);
-            } catch (error) {
-                setLoginLoading(false);
-                showMessage('Lỗi hệ thống', 'error');
-            }
-        }
+            
 
         function setLoginLoading(isLoading) {
             const btn = document.getElementById('loginBtn');
