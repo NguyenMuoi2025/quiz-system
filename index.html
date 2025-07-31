@@ -389,7 +389,7 @@
             document.getElementById('loadQuizBtn').disabled = false;
         }
 
-        async function handleLogin(e) {
+        function handleLogin(e) {
             e.preventDefault();
             
             const email = document.getElementById('email').value.trim();
@@ -405,21 +405,20 @@
             showMessage('Đang xác thực...', 'success');
 
             // Production mode - call Google Apps Script
-            try {
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'checkStudent',
-                        email: email,
-                        studentId: studentId,
-                        password: password
-                    })
-                });
-
-                const result = await response.json();
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'checkStudent',
+                    email: email,
+                    studentId: studentId,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
                 setLoginLoading(false);
 
                 if (result.success) {
@@ -436,11 +435,12 @@
                 } else {
                     showMessage(result.error || 'Thông tin đăng nhập không đúng', 'error');
                 }
-            } catch (error) {
+            })
+            .catch(error => {
                 setLoginLoading(false);
                 console.error('Login error:', error);
                 showMessage('Lỗi kết nối với Google Apps Script', 'error');
-            }
+            });
         }
 
         function setLoginLoading(isLoading) {
@@ -682,35 +682,35 @@
             }
 
             // Production mode - save results to Google Apps Script
-            try {
-                const saveResponse = await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'saveResult',
-                        email: currentUser.email,
-                        studentId: currentUser.id,
-                        studentName: currentUser.name,
-                        quizFile: currentFile,
-                        score: score,
-                        maxScore: maxScore,
-                        percentage: percentage,
-                        answers: results,
-                        timestamp: new Date().toISOString()
-                    })
-                });
-
-                const saveResult = await saveResponse.json();
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'saveResult',
+                    email: currentUser.email,
+                    studentId: currentUser.id,
+                    studentName: currentUser.name,
+                    quizFile: currentFile,
+                    score: score,
+                    maxScore: maxScore,
+                    percentage: percentage,
+                    answers: results,
+                    timestamp: new Date().toISOString()
+                })
+            })
+            .then(response => response.json())
+            .then(saveResult => {
                 if (saveResult.success) {
                     console.log('Results saved successfully');
                 } else {
                     console.error('Failed to save results:', saveResult.error);
                 }
-            } catch (error) {
+            })
+            .catch(error => {
                 console.error('Error saving results:', error);
-            }
+            });
 
             // Disable submit button
             document.getElementById('submitBtn').disabled = true;
