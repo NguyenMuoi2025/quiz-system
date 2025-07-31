@@ -3,8 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GitHub Pages Quiz System</title>
-    <base target="_top">
+    <title>Quiz System with Supabase</title>
     <script>
       // Cấu hình MathJax
       window.MathJax = {
@@ -20,6 +19,8 @@
     <script type="text/javascript" id="MathJax-script" async
       src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
     </script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -251,16 +252,38 @@
             margin-bottom: 20px;
             text-align: center;
         }
+        .results-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+        }
+        .results-table th {
+            background: #667eea;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎓 GitHub Pages Quiz System</h1>
+        <h1>🎓 Quiz System with Supabase</h1>
         
-        <!-- Production Mode Notice -->
+        <!-- Supabase Mode Notice -->
         <div class="demo-mode" style="background: #d4edda; color: #155724; border-color: #c3e6cb;">
-            <strong>✅ Production Mode:</strong> Hệ thống đã kết nối với Google Apps Script. 
-            Đăng nhập sẽ được xác thực thật từ Google Sheet.
+            <strong>✅ Supabase Mode:</strong> Hệ thống kết nối với Supabase để lưu kết quả. 
+            <br>📝 <strong>Thông tin đăng nhập:</strong>
+            <br>• Email: hocsinh1@gmail.com | Mã HS: HS001 | Mật khẩu: 123456
+            <br>• Email: hocsinh2@gmail.com | Mã HS: HS002 | Mật khẩu: 123456
         </div>
         
         <!-- Login Section -->
@@ -310,13 +333,30 @@
             <button class="submit-btn" onclick="submitQuiz()" id="submitBtn">📤 Nộp Bài</button>
             <div id="quizResult" class="result"></div>
         </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="results-section" style="display: none;">
+            <h3>📊 Kết quả đã lưu</h3>
+            <button onclick="loadResults()" style="margin-bottom: 15px;">🔄 Tải lại kết quả</button>
+            <div id="resultsContent"></div>
+        </div>
     </div>
 
     <script>
         // Cấu hình quan trọng - Thay đổi 3 dòng này
         const GITHUB_REPO = 'nguyenmuoi2025/quiz-system';
         const GITHUB_BRANCH = 'main';
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbx_IQBkvVk_-LukB07EF_fSZZzWBwVQ6IBiPHdSdA4mNCgTAIOx7qeUHW0dozH1162mrw/exec';
+        
+        // Supabase configuration - THAY ĐỔI 2 DÒNG NÀY
+        const SUPABASE_URL = 'https://eikpbvgfcrcdydawhedp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpa3BidmdmY3JjZHlkYXdoZWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5ODk3ODUsImV4cCI6MjA2OTU2NTc4NX0.JfgOiqAYCIp45FWuUYQu0AVWHecRpHP75F9GxQJa_SU';
+        
+        // Demo users
+        const DEMO_USERS = [
+            { email: 'hocsinh1@gmail.com', studentId: 'HS001', password: '123456', name: 'Nguyễn Văn A' },
+            { email: 'hocsinh2@gmail.com', studentId: 'HS002', password: '123456', name: 'Trần Thị B' },
+            { email: 'hocsinh3@gmail.com', studentId: 'HS003', password: '123456', name: 'Lê Văn C' }
+        ];
         
         const QUIZ_FILES = [
             {
@@ -349,59 +389,24 @@
         let quizData = [];
         let currentFile = '';
         let selectedFile = '';
-        let callbackCounter = 0;
+        let supabase = null;
+
+        // Initialize Supabase
+        if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase initialized');
+        } else {
+            console.log('Supabase not configured, using local storage');
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadFileGrid();
             setupEventListeners();
+            if (supabase) {
+                loadResults();
+            }
         });
-
-        // JSONP function để bypass CORS
-        function callGoogleAppsScript(action, data, successCallback, errorCallback) {
-            const callbackName = 'gasCallback_' + (++callbackCounter);
-            
-            // Tạo global callback function
-            window[callbackName] = function(response) {
-                try {
-                    successCallback(response);
-                } catch (error) {
-                    errorCallback(error);
-                }
-                // Cleanup
-                delete window[callbackName];
-                if (document.getElementById('gasScript')) {
-                    document.body.removeChild(document.getElementById('gasScript'));
-                }
-            };
-            
-            // Tạo script tag với JSONP
-            const script = document.createElement('script');
-            script.id = 'gasScript';
-            script.src = GAS_URL + '?callback=' + callbackName + '&action=' + action + '&data=' + encodeURIComponent(JSON.stringify(data));
-            
-            // Error handling
-            script.onerror = function() {
-                errorCallback(new Error('Failed to load Google Apps Script'));
-                delete window[callbackName];
-                if (document.getElementById('gasScript')) {
-                    document.body.removeChild(document.getElementById('gasScript'));
-                }
-            };
-            
-            // Timeout
-            setTimeout(function() {
-                if (window[callbackName]) {
-                    errorCallback(new Error('Request timeout'));
-                    delete window[callbackName];
-                    if (document.getElementById('gasScript')) {
-                        document.body.removeChild(document.getElementById('gasScript'));
-                    }
-                }
-            }, 10000); // 10 seconds timeout
-            
-            document.body.appendChild(script);
-        }
 
         function setupEventListeners() {
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -451,34 +456,30 @@
             setLoginLoading(true);
             showMessage('Đang xác thực...', 'success');
 
-            // Production mode - call Google Apps Script using JSONP
-            callGoogleAppsScript('checkStudent', {
-                email: email,
-                studentId: studentId,
-                password: password
-            }, function(result) {
-                setLoginLoading(false);
+            // Simple demo authentication
+            setTimeout(() => {
+                const user = checkUserCredentials(email, studentId, password);
                 
-                if (result && result.success) {
+                if (user) {
                     currentUser = {
-                        email: email,
-                        id: studentId,
-                        name: result.name || 'User'
+                        email: user.email,
+                        id: user.studentId,
+                        name: user.name
                     };
                     showMessage(`Chào ${currentUser.name}!`, 'success');
                     setTimeout(() => {
                         document.getElementById('loginSection').style.display = 'none';
                         document.getElementById('quizSelector').style.display = 'block';
+                        if (supabase) {
+                            document.getElementById('resultsSection').style.display = 'block';
+                        }
                     }, 2000);
                 } else {
-                    const errorMsg = result && result.error ? result.error : 'Thông tin đăng nhập không đúng';
-                    showMessage(errorMsg, 'error');
+                    showMessage('Thông tin đăng nhập không đúng. Thử: hocsinh1@gmail.com / HS001 / 123456', 'error');
                 }
-            }, function(error) {
+                
                 setLoginLoading(false);
-                console.error('Login error:', error);
-                showMessage('Lỗi kết nối với Google Apps Script', 'error');
-            });
+            }, 1000);
         }
 
         function setLoginLoading(isLoading) {
@@ -499,6 +500,14 @@
         function showMessage(text, type) {
             const messageDiv = document.getElementById('loginMessage');
             messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function checkUserCredentials(email, studentId, password) {
+            return DEMO_USERS.find(user => 
+                user.email === email && 
+                user.studentId === studentId && 
+                user.password === password
+            );
         }
 
         async function loadSelectedQuiz() {
@@ -685,7 +694,7 @@
             document.getElementById('progressFill').style.width = percentage + '%';
         }
 
-        function submitQuiz() {
+        async function submitQuiz() {
             let score = 0;
             const totalQuestions = quizData.length;
             const results = [];
@@ -719,8 +728,9 @@
                 resultDiv.innerHTML = `😔 Bạn đạt ${score}/${maxScore} điểm (${percentage}%). Hãy cố gắng hơn!`;
             }
 
-            // Production mode - save results to Google Apps Script
-            callGoogleAppsScript('saveResult', {
+            // Save results
+            const resultData = {
+                timestamp: new Date().toISOString(),
                 email: currentUser.email,
                 studentId: currentUser.id,
                 studentName: currentUser.name,
@@ -729,20 +739,120 @@
                 maxScore: maxScore,
                 percentage: percentage,
                 answers: results,
-                timestamp: new Date().toISOString()
-            }, function(saveResult) {
-                if (saveResult && saveResult.success) {
-                    console.log('Results saved successfully');
-                } else {
-                    console.error('Failed to save results:', saveResult ? saveResult.error : 'Unknown error');
+                status: percentage >= 70 ? 'PASS' : 'FAIL'
+            };
+
+            if (supabase) {
+                // Save to Supabase
+                try {
+                    const { data, error } = await supabase
+                        .from('quiz_results')
+                        .insert([resultData]);
+                    
+                    if (error) {
+                        console.error('Supabase error:', error);
+                        // Fallback to localStorage
+                        saveToLocalStorage(resultData);
+                    } else {
+                        console.log('Results saved to Supabase:', data);
+                        loadResults(); // Refresh results
+                    }
+                } catch (error) {
+                    console.error('Error saving to Supabase:', error);
+                    saveToLocalStorage(resultData);
                 }
-            }, function(error) {
-                console.error('Error saving results:', error);
-            });
+            } else {
+                // Save to localStorage
+                saveToLocalStorage(resultData);
+            }
 
             // Disable submit button
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('submitBtn').textContent = 'Đã nộp bài';
+        }
+
+        function saveToLocalStorage(resultData) {
+            const existingResults = getFromLocalStorage('quizResults') || [];
+            existingResults.push(resultData);
+            localStorage.setItem('quizResults', JSON.stringify(existingResults));
+            console.log('Results saved to localStorage:', resultData);
+        }
+
+        function getFromLocalStorage(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (error) {
+                console.error('Error reading from localStorage:', error);
+                return null;
+            }
+        }
+
+        async function loadResults() {
+            const resultsContent = document.getElementById('resultsContent');
+            
+            if (supabase) {
+                try {
+                    const { data, error } = await supabase
+                        .from('quiz_results')
+                        .select('*')
+                        .order('timestamp', { ascending: false });
+                    
+                    if (error) {
+                        console.error('Error loading from Supabase:', error);
+                        resultsContent.innerHTML = '<p>Lỗi tải kết quả từ Supabase</p>';
+                        return;
+                    }
+                    
+                    displayResults(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                    resultsContent.innerHTML = '<p>Lỗi kết nối Supabase</p>';
+                }
+            } else {
+                // Load from localStorage
+                const results = getFromLocalStorage('quizResults') || [];
+                displayResults(results);
+            }
+        }
+
+        function displayResults(results) {
+            const resultsContent = document.getElementById('resultsContent');
+            
+            if (!results || results.length === 0) {
+                resultsContent.innerHTML = '<p>Chưa có kết quả nào</p>';
+                return;
+            }
+
+            let html = `
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Học sinh</th>
+                            <th>Bài kiểm tra</th>
+                            <th>Điểm</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach(result => {
+                const date = new Date(result.timestamp).toLocaleString('vi-VN');
+                html += `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${result.studentName} (${result.email})</td>
+                        <td>${result.quizFile}</td>
+                        <td>${result.score}/${result.maxScore} (${result.percentage}%)</td>
+                        <td style="color: ${result.status === 'PASS' ? 'green' : 'red'}">${result.status}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            resultsContent.innerHTML = html;
         }
     </script>
 </body>
