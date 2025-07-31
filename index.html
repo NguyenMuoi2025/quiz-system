@@ -257,10 +257,10 @@
     <div class="container">
         <h1>🎓 GitHub Pages Quiz System</h1>
         
-        <!-- Demo Mode Notice -->
-        <div class="demo-mode">
-            <strong>🔧 Demo Mode:</strong> Hệ thống đang chạy ở chế độ demo. 
-            Để kết nối với Google Apps Script, hãy thay đổi cấu hình bên dưới.
+        <!-- Production Mode Notice -->
+        <div class="demo-mode" style="background: #d4edda; color: #155724; border-color: #c3e6cb;">
+            <strong>✅ Production Mode:</strong> Hệ thống đã kết nối với Google Apps Script. 
+            Đăng nhập sẽ được xác thực thật từ Google Sheet.
         </div>
         
         <!-- Login Section -->
@@ -313,10 +313,10 @@
     </div>
 
     <script>
-        // Cấu hình quan trọng - Thay đổi 2 dòng này
+        // Cấu hình quan trọng - Thay đổi 3 dòng này
         const GITHUB_REPO = 'nguyenmuoi2025/quiz-system';
         const GITHUB_BRANCH = 'main';
-        // const GAS = 'https://script.google.com/macros/s/AKfycbytI0hLdK0hCaR-iim6NyXGgS58hXHELS9kXyGxZGXv0urPBOObJKt7XgGgo56t5PUJHA/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbytI0hLdK0hCaR-iim6NyXGgS58hXHELS9kXyGxZGXv0urPBOObJKt7XgGgo56t5PUJHA/exec';
         
         const QUIZ_FILES = [
             {
@@ -404,20 +404,43 @@
             setLoginLoading(true);
             showMessage('Đang xác thực...', 'success');
 
-            // Demo mode - bypass Google Apps Script
-            setTimeout(() => {
+            // Production mode - call Google Apps Script
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'checkStudent',
+                        email: email,
+                        studentId: studentId,
+                        password: password
+                    })
+                });
+
+                const result = await response.json();
                 setLoginLoading(false);
-                currentUser = {
-                    email: email,
-                    id: studentId,
-                    name: 'Demo User'
-                };
-                showMessage(`Chào ${currentUser.name}!`, 'success');
-                setTimeout(() => {
-                    document.getElementById('loginSection').style.display = 'none';
-                    document.getElementById('quizSelector').style.display = 'block';
-                }, 2000);
-            }, 1500);
+
+                if (result.success) {
+                    currentUser = {
+                        email: email,
+                        id: studentId,
+                        name: result.name || 'User'
+                    };
+                    showMessage(`Chào ${currentUser.name}!`, 'success');
+                    setTimeout(() => {
+                        document.getElementById('loginSection').style.display = 'none';
+                        document.getElementById('quizSelector').style.display = 'block';
+                    }, 2000);
+                } else {
+                    showMessage(result.error || 'Thông tin đăng nhập không đúng', 'error');
+                }
+            } catch (error) {
+                setLoginLoading(false);
+                console.error('Login error:', error);
+                showMessage('Lỗi kết nối với Google Apps Script', 'error');
+            }
         }
 
         function setLoginLoading(isLoading) {
@@ -658,14 +681,36 @@
                 resultDiv.innerHTML = `😔 Bạn đạt ${score}/${maxScore} điểm (${percentage}%). Hãy cố gắng hơn!`;
             }
 
-            // Demo mode - log results
-            console.log('Quiz results:', {
-                file: currentFile,
-                score: score,
-                maxScore: maxScore,
-                percentage: percentage,
-                answers: results
-            });
+            // Production mode - save results to Google Apps Script
+            try {
+                const saveResponse = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'saveResult',
+                        email: currentUser.email,
+                        studentId: currentUser.id,
+                        studentName: currentUser.name,
+                        quizFile: currentFile,
+                        score: score,
+                        maxScore: maxScore,
+                        percentage: percentage,
+                        answers: results,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const saveResult = await saveResponse.json();
+                if (saveResult.success) {
+                    console.log('Results saved successfully');
+                } else {
+                    console.error('Failed to save results:', saveResult.error);
+                }
+            } catch (error) {
+                console.error('Error saving results:', error);
+            }
 
             // Disable submit button
             document.getElementById('submitBtn').disabled = true;
