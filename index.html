@@ -349,12 +349,59 @@
         let quizData = [];
         let currentFile = '';
         let selectedFile = '';
+        let callbackCounter = 0;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadFileGrid();
             setupEventListeners();
         });
+
+        // JSONP function để bypass CORS
+        function callGoogleAppsScript(action, data, successCallback, errorCallback) {
+            const callbackName = 'gasCallback_' + (++callbackCounter);
+            
+            // Tạo global callback function
+            window[callbackName] = function(response) {
+                try {
+                    successCallback(response);
+                } catch (error) {
+                    errorCallback(error);
+                }
+                // Cleanup
+                delete window[callbackName];
+                if (document.getElementById('gasScript')) {
+                    document.body.removeChild(document.getElementById('gasScript'));
+                }
+            };
+            
+            // Tạo script tag với JSONP
+            const script = document.createElement('script');
+            script.id = 'gasScript';
+            script.src = GAS_URL + '?callback=' + callbackName + '&action=' + action + '&data=' + encodeURIComponent(JSON.stringify(data));
+            
+            // Error handling
+            script.onerror = function() {
+                errorCallback(new Error('Failed to load Google Apps Script'));
+                delete window[callbackName];
+                if (document.getElementById('gasScript')) {
+                    document.body.removeChild(document.getElementById('gasScript'));
+                }
+            };
+            
+            // Timeout
+            setTimeout(function() {
+                if (window[callbackName]) {
+                    errorCallback(new Error('Request timeout'));
+                    delete window[callbackName];
+                    if (document.getElementById('gasScript')) {
+                        document.body.removeChild(document.getElementById('gasScript'));
+                    }
+                }
+            }, 10000); // 10 seconds timeout
+            
+            document.body.appendChild(script);
+        }
 
         function setupEventListeners() {
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -404,24 +451,15 @@
             setLoginLoading(true);
             showMessage('Đang xác thực...', 'success');
 
-            // Production mode - call Google Apps Script
-            fetch(GAS_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'checkStudent',
-                    email: email,
-                    studentId: studentId,
-                    password: password
-                })
-            })
-            .then(response => response.json())
-            .then(result => {
+            // Production mode - call Google Apps Script using JSONP
+            callGoogleAppsScript('checkStudent', {
+                email: email,
+                studentId: studentId,
+                password: password
+            }, function(result) {
                 setLoginLoading(false);
-
-                if (result.success) {
+                
+                if (result && result.success) {
                     currentUser = {
                         email: email,
                         id: studentId,
@@ -433,10 +471,10 @@
                         document.getElementById('quizSelector').style.display = 'block';
                     }, 2000);
                 } else {
-                    showMessage(result.error || 'Thông tin đăng nhập không đúng', 'error');
+                    const errorMsg = result && result.error ? result.error : 'Thông tin đăng nhập không đúng';
+                    showMessage(errorMsg, 'error');
                 }
-            })
-            .catch(error => {
+            }, function(error) {
                 setLoginLoading(false);
                 console.error('Login error:', error);
                 showMessage('Lỗi kết nối với Google Apps Script', 'error');
@@ -682,33 +720,23 @@
             }
 
             // Production mode - save results to Google Apps Script
-            fetch(GAS_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'saveResult',
-                    email: currentUser.email,
-                    studentId: currentUser.id,
-                    studentName: currentUser.name,
-                    quizFile: currentFile,
-                    score: score,
-                    maxScore: maxScore,
-                    percentage: percentage,
-                    answers: results,
-                    timestamp: new Date().toISOString()
-                })
-            })
-            .then(response => response.json())
-            .then(saveResult => {
-                if (saveResult.success) {
+            callGoogleAppsScript('saveResult', {
+                email: currentUser.email,
+                studentId: currentUser.id,
+                studentName: currentUser.name,
+                quizFile: currentFile,
+                score: score,
+                maxScore: maxScore,
+                percentage: percentage,
+                answers: results,
+                timestamp: new Date().toISOString()
+            }, function(saveResult) {
+                if (saveResult && saveResult.success) {
                     console.log('Results saved successfully');
                 } else {
-                    console.error('Failed to save results:', saveResult.error);
+                    console.error('Failed to save results:', saveResult ? saveResult.error : 'Unknown error');
                 }
-            })
-            .catch(error => {
+            }, function(error) {
                 console.error('Error saving results:', error);
             });
 
