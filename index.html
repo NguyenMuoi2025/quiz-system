@@ -456,17 +456,18 @@
             setLoginLoading(true);
             showMessage('Đang xác thực...', 'success');
 
-            // Simple demo authentication
-            setTimeout(() => {
-                const user = checkUserCredentials(email, studentId, password);
+            // Supabase authentication
+            setTimeout(async () => {
+                const user = await checkUserCredentials(email, studentId, password);
                 
                 if (user) {
                     currentUser = {
                         email: user.email,
                         id: user.studentId,
-                        name: user.name
+                        name: user.name,
+                        class: user.class
                     };
-                    showMessage(`Chào ${currentUser.name}!`, 'success');
+                    showMessage(`Chào ${currentUser.name}! (Lớp ${user.class || 'N/A'})`, 'success');
                     setTimeout(() => {
                         document.getElementById('loginSection').style.display = 'none';
                         document.getElementById('quizSelector').style.display = 'block';
@@ -475,7 +476,7 @@
                         }
                     }, 2000);
                 } else {
-                    showMessage('Thông tin đăng nhập không đúng. Thử: hocsinh1@gmail.com / HS001 / 123456', 'error');
+                    showMessage('Thông tin đăng nhập không đúng. Vui lòng kiểm tra lại.', 'error');
                 }
                 
                 setLoginLoading(false);
@@ -502,12 +503,39 @@
             messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`;
         }
 
-        function checkUserCredentials(email, studentId, password) {
-            return DEMO_USERS.find(user => 
-                user.email === email && 
-                user.studentId === studentId && 
-                user.password === password
-            );
+        async function checkUserCredentials(email, studentId, password) {
+            if (supabase) {
+                try {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('email', email)
+                        .eq('student_id', studentId)
+                        .eq('password', password)
+                        .single();
+
+                    if (error || !data) {
+                        return null;
+                    }
+
+                    return {
+                        email: data.email,
+                        studentId: data.student_id,
+                        name: data.name,
+                        class: data.class
+                    };
+                } catch (error) {
+                    console.error('Error checking credentials:', error);
+                    return null;
+                }
+            } else {
+                // Fallback to demo users
+                return DEMO_USERS.find(user => 
+                    user.email === email && 
+                    user.studentId === studentId && 
+                    user.password === password
+                );
+            }
         }
 
         async function loadSelectedQuiz() {
