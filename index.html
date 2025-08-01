@@ -1,887 +1,599 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Quiz System with Supabase</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Đề Kiểm Tra Toán</title>
+    
+    <!-- MathJax -->
     <script>
-      // Cấu hình MathJax
-      window.MathJax = {
-        tex: {
-          inlineMath: [['$', '$'], ['\\(', '\\)']],
-          displayMath: [['$$', '$$'], ['\\[', '\\]']]
-        },
-        svg: {
-          fontCache: 'global'
-        }
-      };
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)'], ['$', '$']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']]
+            },
+            svg: { fontCache: 'global' }
+        };
     </script>
-    <script type="text/javascript" id="MathJax-script" async
-      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
-    </script>
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+    
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        h1, h2, h3 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .login-section {
-            border: 2px dashed #667eea;
-            padding: 30px;
-            text-align: center;
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }
-        .quiz-selector {
-            text-align: center;
-            margin-bottom: 30px;
             padding: 20px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            background: #f8f9fa;
         }
-        .file-grid {
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .config-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .config-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
+            gap: 20px;
+            margin-bottom: 20px;
         }
-        .file-card {
-            background: white;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: left;
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
         }
-        .file-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            border-color: #667eea;
-        }
-        .file-card.selected {
-            border-color: #667eea;
-            background: #e9eafc;
-        }
-        .file-title {
+
+        .form-group label {
             font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            color: #495057;
         }
-        .file-desc {
-            font-size: 0.9em;
-            color: #666;
-        }
-        .file-count {
-            font-size: 0.8em;
-            color: #667eea;
-            font-weight: 600;
-        }
-        input, select, button {
-            padding: 12px 20px;
-            margin: 10px;
-            border: none;
+
+        input, select {
+            padding: 12px;
+            border: 2px solid #e9ecef;
             border-radius: 8px;
             font-size: 16px;
-            cursor: pointer;
+            transition: border-color 0.3s;
         }
-        input[type="email"], input[type="text"], input[type="password"] {
-            border: 2px solid #dee2e6;
-            background: white;
-            width: 300px;
-            max-width: 100%;
-        }
-        input:focus {
+
+        input:focus, select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
         }
-        button {
+
+        .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
             font-weight: 600;
-            transition: transform 0.2s;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        button:hover {
+
+        .btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
-        button:disabled {
+
+        .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-        .quiz-container {
-            display: none;
-        }
-        .question {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            background: #fff;
-        }
-        .question-title {
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #495057;
-        }
-        .options {
+
+        .status {
             margin-top: 15px;
-        }
-        .option {
-            display: block;
-            padding: 10px 15px;
-            margin: 5px 0;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .option:hover {
-            background: #e9ecef;
-        }
-        .option input[type="radio"] {
-            margin-right: 10px;
-        }
-        .option input[type="text"], .option textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            margin-top: 5px;
-            box-sizing: border-box;
-        }
-        .submit-btn {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            width: 100%;
-            margin-top: 20px;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 20px;
+            padding: 12px;
             border-radius: 8px;
             text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            display: none;
+            font-weight: 600;
         }
-        .result-success {
+
+        .status.success {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
-        .result-fail {
+
+        .status.error {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        .questions-section {
+            padding: 30px;
+        }
+
+        .question-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .question-number {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .question-level {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .level-easy { background: #d4edda; color: #155724; }
+        .level-medium { background: #fff3cd; color: #856404; }
+        .level-hard { background: #f8d7da; color: #721c24; }
+
+        .question-content {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .question-options {
+            display: grid;
+            gap: 10px;
+        }
+
+        .option {
+            padding: 12px 15px;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .option:hover {
+            border-color: #4facfe;
+        }
+
+        .option.selected {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+
+        .option.correct {
+            background: #e8f5e8;
+            border-color: #4caf50;
+        }
+
+        .option.incorrect {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+
         .loading {
             text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-questions {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .score-section {
+            background: #e8f5e8;
             padding: 20px;
-            color: #667eea;
-        }
-        .message {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 6px;
-            text-align: center;
-            font-weight: 500;
-        }
-        .error {
-            background-color: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-        }
-        .success {
-            background-color: #efe;
-            color: #363;
-            border: 1px solid #cfc;
-        }
-        .user-info {
-            background: #e9eafc;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 10px;
-            background: #e9ecef;
-            border-radius: 5px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.3s;
-        }
-        .demo-mode {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-            padding: 15px;
-            border-radius: 8px;
+            border-radius: 10px;
             margin-bottom: 20px;
             text-align: center;
         }
-        .results-section {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
+
+        .score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2e7d32;
         }
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .results-table th, .results-table td {
-            border: 1px solid #dee2e6;
-            padding: 8px;
-            text-align: left;
-        }
-        .results-table th {
-            background: #667eea;
-            color: white;
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .question-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎓 Quiz System with Supabase</h1>
-        
-        <!-- Supabase Mode Notice -->
-        <div class="demo-mode" style="background: #d4edda; color: #155724; border-color: #c3e6cb;">
-            <strong>✅ Supabase Mode:</strong> Hệ thống kết nối với Supabase để lưu kết quả. 
-            <br>📝 <strong>Thông tin đăng nhập:</strong>
-            <br>• Email: hocsinh1@gmail.com | Mã HS: HS001 | Mật khẩu: 123456
-            <br>• Email: hocsinh2@gmail.com | Mã HS: HS002 | Mật khẩu: 123456
-        </div>
-        
-        <!-- Login Section -->
-        <div id="loginSection" class="login-section">
-            <h2>🔐 Đăng nhập</h2>
-            <form id="loginForm">
-                <div>
-                    <input type="email" id="email" placeholder="Email học sinh" required>
-                </div>
-                <div>
-                    <input type="text" id="studentId" placeholder="Mã học sinh" required>
-                </div>
-                <div>
-                    <input type="password" id="password" placeholder="Mật khẩu" required>
-                </div>
-                <button type="submit" id="loginBtn">
-                    <span id="loginText">Đăng nhập</span>
-                    <span id="loginSpinner" style="display: none;">🔄</span>
-                </button>
-            </form>
-            <div id="loginMessage"></div>
+        <div class="header">
+            <h1>📊 Hệ thống Đề Kiểm Tra Toán</h1>
+            <p>Kết nối với Vercel API để tạo đề thi Toán tự động</p>
         </div>
 
-        <!-- Quiz Selector -->
-        <div id="quizSelector" class="quiz-selector" style="display: none;">
-            <h3>📚 Chọn bài kiểm tra</h3>
-            <div class="file-grid" id="fileGrid">
-                <!-- Files will be loaded here -->
-            </div>
-            <button onclick="loadSelectedQuiz()" id="loadQuizBtn" disabled>
-                📝 Bắt đầu làm bài
-            </button>
-        </div>
-
-        <!-- Quiz Container -->
-        <div id="quizContainer" class="quiz-container">
-            <div class="user-info" id="userInfo">
-                <!-- User info will be displayed here -->
+        <div class="config-section">
+            <h2 style="margin-bottom: 20px; color: #495057;">⚙️ Cấu hình đề thi</h2>
+            
+            <div class="config-grid">
+                <div class="form-group">
+                    <label for="questionCount">Số câu hỏi:</label>
+                    <select id="questionCount">
+                        <option value="5">5 câu</option>
+                        <option value="10" selected>10 câu</option>
+                        <option value="15">15 câu</option>
+                        <option value="20">20 câu</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="difficulty">Độ khó:</label>
+                    <select id="difficulty">
+                        <option value="">Tất cả</option>
+                        <option value="easy">Dễ</option>
+                        <option value="medium">Trung bình</option>
+                        <option value="hard">Khó</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="grade">Lớp:</label>
+                    <select id="grade">
+                        <option value="">Tất cả</option>
+                        <option value="10">Lớp 10</option>
+                        <option value="11">Lớp 11</option>
+                        <option value="12">Lớp 12</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="questionType">Loại câu hỏi:</label>
+                    <select id="questionType">
+                        <option value="">Tất cả</option>
+                        <option value="trac_nghiem">Trắc nghiệm</option>
+                        <option value="tu_luan">Tự luận</option>
+                        <option value="dien_khuyat">Điền khuyết</option>
+                    </select>
+                </div>
             </div>
             
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button class="btn" onclick="loadQuestions()">📝 Tải câu hỏi</button>
+                <button class="btn" onclick="startQuiz()">🎯 Bắt đầu làm bài</button>
+                <button class="btn" onclick="submitQuiz()">✅ Nộp bài</button>
             </div>
             
-            <h2 id="quizTitle">📝 Bài Kiểm Tra</h2>
-            <div id="quizContent"></div>
-            <button class="submit-btn" onclick="submitQuiz()" id="submitBtn">📤 Nộp Bài</button>
-            <div id="quizResult" class="result"></div>
+            <div id="status"></div>
         </div>
 
-        <!-- Results Section -->
-        <div id="resultsSection" class="results-section" style="display: none;">
-            <h3>📊 Kết quả đã lưu</h3>
-            <button onclick="loadResults()" style="margin-bottom: 15px;">🔄 Tải lại kết quả</button>
-            <div id="resultsContent"></div>
+        <div class="questions-section">
+            <div id="scoreSection" style="display: none;">
+                <div class="score-section">
+                    <h3>�� Kết quả bài thi</h3>
+                    <div class="score" id="scoreDisplay">0/0</div>
+                    <p>Điểm số: <span id="percentage">0%</span></p>
+                </div>
+            </div>
+            
+            <div id="questionsContainer">
+                <div class="no-questions">
+                    <h3>📝 Chưa có câu hỏi nào</h3>
+                    <p>Vui lòng chọn cấu hình và tải câu hỏi</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Cấu hình quan trọng - Thay đổi 3 dòng này
-        const GITHUB_REPO = 'nguyenmuoi2025/quiz-system';
-        const GITHUB_BRANCH = 'main';
+        // API Configuration
+        const API_BASE = 'https://express-js-on-vercel-nine-beta.vercel.app/api';
         
-        // Supabase configuration - THAY ĐỔI 2 DÒNG NÀY
-        const SUPABASE_URL = 'https://eikpbvgfcrcdydawhedp.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpa3BidmdmY3JjZHlkYXdoZWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5ODk3ODUsImV4cCI6MjA2OTU2NTc4NX0.JfgOiqAYCIp45FWuUYQu0AVWHecRpHP75F9GxQJa_SU';
-        
-        // Demo users
-        const DEMO_USERS = [
-            { email: 'hocsinh1@gmail.com', studentId: 'HS001', password: '123456', name: 'Nguyễn Văn A' },
-            { email: 'hocsinh2@gmail.com', studentId: 'HS002', password: '123456', name: 'Trần Thị B' },
-            { email: 'hocsinh3@gmail.com', studentId: 'HS003', password: '123456', name: 'Lê Văn C' }
-        ];
-        
-        const QUIZ_FILES = [
-            {
-                name: 'MauCauHoi.md',
-                title: 'Mẫu Câu Hỏi Đầy Đủ',
-                desc: 'File mẫu với 10 câu hỏi trắc nghiệm',
-                count: 10
-            },
-            {
-                name: 'MauDonGian.md',
-                title: 'Mẫu Đơn Giản',
-                desc: 'File mẫu với 5 câu hỏi cơ bản',
-                count: 5
-            },
-            {
-                name: 'T12CBNguyenHam.md',
-                title: 'Nguyên Hàm Cơ Bản',
-                desc: 'Bài tập về nguyên hàm',
-                count: 15
-            },
-            {
-                name: 'T12TichPhanBaiTapTL.md',
-                title: 'Tích Phân Tự Luận',
-                desc: 'Bài tập tích phân tự luận',
-                count: 8
-            }
-        ];
+        let questions = [];
+        let userAnswers = {};
+        let quizMode = false;
 
-        let currentUser = null;
-        let quizData = [];
-        let currentFile = '';
-        let selectedFile = '';
-        let supabase = null;
-
-        // Initialize Supabase
-        if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase initialized');
-        } else {
-            console.log('Supabase not configured, using local storage');
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            loadFileGrid();
-            setupEventListeners();
-            if (supabase) {
-                loadResults();
-            }
-        });
-
-        function setupEventListeners() {
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-        }
-
-        function loadFileGrid() {
-            const grid = document.getElementById('fileGrid');
-            grid.innerHTML = '';
-
-            QUIZ_FILES.forEach(file => {
-                const card = document.createElement('div');
-                card.className = 'file-card';
-                card.onclick = () => selectFile(file.name);
-                card.innerHTML = `
-                    <div class="file-title">${file.title}</div>
-                    <div class="file-desc">${file.desc}</div>
-                    <div class="file-count">${file.count} câu hỏi</div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function selectFile(fileName) {
-            // Remove previous selection
-            document.querySelectorAll('.file-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-
-            // Add selection to clicked card
-            event.target.closest('.file-card').classList.add('selected');
-            selectedFile = fileName;
-            document.getElementById('loadQuizBtn').disabled = false;
-        }
-
-        function handleLogin(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value.trim();
-            const studentId = document.getElementById('studentId').value.trim();
-            const password = document.getElementById('password').value.trim();
-
-            if (!email || !studentId || !password) {
-                showMessage('Vui lòng điền đầy đủ thông tin', 'error');
-                return;
-            }
-
-            setLoginLoading(true);
-            showMessage('Đang xác thực...', 'success');
-
-            // Supabase authentication
-            setTimeout(async () => {
-                const user = await checkUserCredentials(email, studentId, password);
-                
-                if (user) {
-                    currentUser = {
-                        email: user.email,
-                        id: user.studentId,
-                        name: user.name,
-                        class: user.class
-                    };
-                    showMessage(`Chào ${currentUser.name}! (Lớp ${user.class || 'N/A'})`, 'success');
-                    setTimeout(() => {
-                        document.getElementById('loginSection').style.display = 'none';
-                        document.getElementById('quizSelector').style.display = 'block';
-                        if (supabase) {
-                            document.getElementById('resultsSection').style.display = 'block';
-                        }
-                    }, 2000);
-                } else {
-                    showMessage('Thông tin đăng nhập không đúng. Vui lòng kiểm tra lại.', 'error');
-                }
-                
-                setLoginLoading(false);
-            }, 1000);
-        }
-
-        function setLoginLoading(isLoading) {
-            const btn = document.getElementById('loginBtn');
-            const text = document.getElementById('loginText');
-            const spinner = document.getElementById('loginSpinner');
-            
-            btn.disabled = isLoading;
-            if (isLoading) {
-                text.style.display = 'none';
-                spinner.style.display = 'inline';
-            } else {
-                text.style.display = 'inline';
-                spinner.style.display = 'none';
-            }
-        }
-
-        function showMessage(text, type) {
-            const messageDiv = document.getElementById('loginMessage');
-            messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`;
-        }
-
-        async function checkUserCredentials(email, studentId, password) {
-            if (supabase) {
-                try {
-                    const { data, error } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('email', email)
-                        .eq('student_id', studentId)
-                        .eq('password', password)
-                        .single();
-
-                    if (error || !data) {
-                        return null;
-                    }
-
-                    return {
-                        email: data.email,
-                        studentId: data.student_id,
-                        name: data.name,
-                        class: data.class
-                    };
-                } catch (error) {
-                    console.error('Error checking credentials:', error);
-                    return null;
-                }
-            } else {
-                // Fallback to demo users
-                return DEMO_USERS.find(user => 
-                    user.email === email && 
-                    user.studentId === studentId && 
-                    user.password === password
-                );
-            }
-        }
-
-        async function loadSelectedQuiz() {
-            if (!selectedFile) {
-                alert('Vui lòng chọn một file quiz!');
-                return;
-            }
-
-            document.getElementById('quizSelector').style.display = 'none';
-            document.getElementById('quizContainer').style.display = 'block';
-            
-            // Update user info
-            document.getElementById('userInfo').innerHTML = 
-                `👤 ${currentUser.name} | 📧 ${currentUser.email} | 📝 ${selectedFile}`;
-
-            try {
-                // Load from GitHub
-                const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${selectedFile}`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error('Không thể tải file từ GitHub. Hãy kiểm tra cấu hình GITHUB_REPO và GITHUB_BRANCH');
-                }
-                
-                const mdText = await response.text();
-                quizData = convertMDToQuiz(mdText);
-                currentFile = selectedFile;
-                
-                createQuizHTML();
-                updateProgress(0);
-                
-                // Trigger MathJax
-                if (window.MathJax) {
-                    MathJax.typesetPromise();
-                }
-                
-            } catch (error) {
-                console.error('Error loading quiz:', error);
-                alert('Lỗi khi tải quiz: ' + error.message);
-                document.getElementById('quizSelector').style.display = 'block';
-                document.getElementById('quizContainer').style.display = 'none';
-            }
-        }
-
-        function convertMDToQuiz(mdText) {
-            const questions = [];
-            const lines = mdText.split('\n');
-            let currentQuestion = null;
-            let questionNumber = 0;
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                
-                if (isQuestionHeader(line)) {
-                    if (currentQuestion) {
-                        questions.push(currentQuestion);
-                    }
-                    questionNumber++;
-                    currentQuestion = {
-                        id: questionNumber,
-                        question: extractQuestionText(line),
-                        type: 'multiple_choice',
-                        options: [],
-                        correctAnswer: null
-                    };
-                }
-                else if (isMultipleChoiceOption(line) && currentQuestion) {
-                    addOption(line, currentQuestion);
-                }
-                else if (isFillBlankQuestion(line) && currentQuestion) {
-                    currentQuestion.type = 'fill_blank';
-                    currentQuestion.question = line;
-                }
-                else if (currentQuestion && line && !isOption(line)) {
-                    if (currentQuestion.question) {
-                        currentQuestion.question += '\n' + line;
-                    } else {
-                        currentQuestion.question = line;
-                    }
-                }
-            }
-
-            if (currentQuestion) {
-                questions.push(currentQuestion);
-            }
-
-            return questions;
-        }
-
-        function isQuestionHeader(line) {
-            return (line.startsWith('##') && !line.startsWith('###')) || 
-                   line.startsWith('###') ||
-                   line.match(/^\d+\.\s/) ||
-                   line.match(/^Bài\s+\d+/i);
-        }
-
-        function isMultipleChoiceOption(line) {
-            return line.match(/^\*\*[A-D]\)\*\*/) || 
-                   line.match(/^[A-D]\)\s/) ||
-                   line.match(/^[A-D]\.\s/);
-        }
-
-        function isFillBlankQuestion(line) {
-            return line.includes('___') || 
-                   line.includes('...') ||
-                   line.match(/điền|tính|tìm.*là/i);
-        }
-
-        function isOption(line) {
-            return isMultipleChoiceOption(line);
-        }
-
-        function extractQuestionText(line) {
-            return line.replace(/^#+\s*/, '')
-                      .replace(/^\d+\.\s*/, '')
-                      .replace(/^Bài\s+\d+[:\s]*/i, '');
-        }
-
-        function addOption(line, question) {
-            const optionMatch = line.match(/^(\*\*)?([A-D])[\)\.]\*\*\s*(.+)/);
-            if (optionMatch) {
-                const letter = optionMatch[2];
-                const text = optionMatch[3].trim();
-                
-                question.options.push({
-                    letter: letter,
-                    text: text
-                });
-            }
-        }
-
-        function createQuizHTML() {
-            const quizContent = document.getElementById('quizContent');
-            let html = '';
-
-            quizData.forEach((question, index) => {
-                html += `<div class="question">
-                    <div class="question-title">Câu ${index + 1}: ${question.question}</div>`;
-                
-                if (question.type === 'multiple_choice' && question.options.length > 0) {
-                    html += '<div class="options">';
-                    question.options.forEach(option => {
-                        html += `<label class="option">
-                            <input type="radio" name="q${index + 1}" value="${option.letter}" onchange="updateProgress()">
-                            ${option.letter}) ${option.text}
-                        </label>`;
-                    });
-                    html += '</div>';
-                } else if (question.type === 'fill_blank') {
-                    html += `<div class="options">
-                        <label class="option">
-                            Đáp án: <input type="text" name="q${index + 1}" placeholder="Nhập đáp án" onchange="updateProgress()">
-                        </label>
-                    </div>`;
-                } else {
-                    html += `<div class="options">
-                        <label class="option">
-                            Trả lời: <textarea name="q${index + 1}" placeholder="Nhập câu trả lời" rows="3" onchange="updateProgress()"></textarea>
-                        </label>
-                    </div>`;
-                }
-                
-                html += '</div>';
-            });
-
-            quizContent.innerHTML = html;
-        }
-
-        function updateProgress() {
-            const totalQuestions = quizData.length;
-            let answeredQuestions = 0;
-
-            quizData.forEach((question, index) => {
-                const answer = document.querySelector(`input[name="q${index + 1}"]:checked`)?.value || 
-                             document.querySelector(`input[name="q${index + 1}"]`)?.value ||
-                             document.querySelector(`textarea[name="q${index + 1}"]`)?.value;
-                
-                if (answer) {
-                    answeredQuestions++;
-                }
-            });
-
-            const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
-            document.getElementById('progressFill').style.width = percentage + '%';
-        }
-
-        async function submitQuiz() {
-            let score = 0;
-            const totalQuestions = quizData.length;
-            const results = [];
-
-            quizData.forEach((question, index) => {
-                const answer = document.querySelector(`input[name="q${index + 1}"]:checked`)?.value || 
-                             document.querySelector(`input[name="q${index + 1}"]`)?.value ||
-                             document.querySelector(`textarea[name="q${index + 1}"]`)?.value;
-                
-                if (answer) {
-                    const questionScore = Math.random() > 0.5 ? 2 : 0;
-                    score += questionScore;
-                    results.push({
-                        question: index + 1,
-                        answer: answer,
-                        score: questionScore
-                    });
-                }
-            });
-
-            const maxScore = totalQuestions * 2;
-            const percentage = Math.round((score / maxScore) * 100);
-            const resultDiv = document.getElementById('quizResult');
-            resultDiv.style.display = 'block';
-
-            if (percentage >= 70) {
-                resultDiv.className = 'result result-success';
-                resultDiv.innerHTML = `🎉 Chúc mừng! Bạn đạt ${score}/${maxScore} điểm (${percentage}%)`;
-            } else {
-                resultDiv.className = 'result result-fail';
-                resultDiv.innerHTML = `😔 Bạn đạt ${score}/${maxScore} điểm (${percentage}%). Hãy cố gắng hơn!`;
-            }
-
-            // Save results
-            const resultData = {
-                timestamp: new Date().toISOString(),
-                email: currentUser.email,
-                studentId: currentUser.id,
-                studentName: currentUser.name,
-                quizFile: currentFile,
-                score: score,
-                maxScore: maxScore,
-                percentage: percentage,
-                answers: results,
-                status: percentage >= 70 ? 'PASS' : 'FAIL'
-            };
-
-            if (supabase) {
-                // Save to Supabase
-                try {
-                    const { data, error } = await supabase
-                        .from('quiz_results')
-                        .insert([resultData]);
-                    
-                    if (error) {
-                        console.error('Supabase error:', error);
-                        // Fallback to localStorage
-                        saveToLocalStorage(resultData);
-                    } else {
-                        console.log('Results saved to Supabase:', data);
-                        loadResults(); // Refresh results
-                    }
-                } catch (error) {
-                    console.error('Error saving to Supabase:', error);
-                    saveToLocalStorage(resultData);
-                }
-            } else {
-                // Save to localStorage
-                saveToLocalStorage(resultData);
-            }
-
-            // Disable submit button
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('submitBtn').textContent = 'Đã nộp bài';
-        }
-
-        function saveToLocalStorage(resultData) {
-            const existingResults = getFromLocalStorage('quizResults') || [];
-            existingResults.push(resultData);
-            localStorage.setItem('quizResults', JSON.stringify(existingResults));
-            console.log('Results saved to localStorage:', resultData);
-        }
-
-        function getFromLocalStorage(key) {
-            try {
-                const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : null;
-            } catch (error) {
-                console.error('Error reading from localStorage:', error);
-                return null;
-            }
-        }
-
-        async function loadResults() {
-            const resultsContent = document.getElementById('resultsContent');
-            
-            if (supabase) {
-                try {
-                    const { data, error } = await supabase
-                        .from('quiz_results')
-                        .select('*')
-                        .order('timestamp', { ascending: false });
-                    
-                    if (error) {
-                        console.error('Error loading from Supabase:', error);
-                        resultsContent.innerHTML = '<p>Lỗi tải kết quả từ Supabase</p>';
-                        return;
-                    }
-                    
-                    displayResults(data);
-                } catch (error) {
-                    console.error('Error:', error);
-                    resultsContent.innerHTML = '<p>Lỗi kết nối Supabase</p>';
-                }
-            } else {
-                // Load from localStorage
-                const results = getFromLocalStorage('quizResults') || [];
-                displayResults(results);
-            }
-        }
-
-        function displayResults(results) {
-            const resultsContent = document.getElementById('resultsContent');
-            
-            if (!results || results.length === 0) {
-                resultsContent.innerHTML = '<p>Chưa có kết quả nào</p>';
-                return;
-            }
-
-            let html = `
-                <table class="results-table">
-                    <thead>
-                        <tr>
-                            <th>Thời gian</th>
-                            <th>Học sinh</th>
-                            <th>Bài kiểm tra</th>
-                            <th>Điểm</th>
-                            <th>Trạng thái</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+        function showLoading() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Đang tải câu hỏi từ API...</p>
+                </div>
             `;
+        }
 
-            results.forEach(result => {
-                const date = new Date(result.timestamp).toLocaleString('vi-VN');
+        async function loadQuestions() {
+            try {
+                showLoading();
+                
+                const params = new URLSearchParams({
+                    grade: document.getElementById('grade').value,
+                    difficulty: document.getElementById('difficulty').value,
+                    type: document.getElementById('questionType').value,
+                    limit: document.getElementById('questionCount').value
+                });
+
+                const response = await fetch(`${API_BASE}/questions?${params}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    questions = result.data;
+                    displayQuestions();
+                    showStatus(`✅ Đã tải thành công ${questions.length} câu hỏi!`);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showStatus(`❌ Lỗi: ${error.message}`, 'error');
+                document.getElementById('questionsContainer').innerHTML = `
+                    <div class="no-questions">
+                        <h3>❌ Lỗi tải dữ liệu</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayQuestions() {
+            const container = document.getElementById('questionsContainer');
+            
+            if (questions.length === 0) {
+                container.innerHTML = `
+                    <div class="no-questions">
+                        <h3>�� Không tìm thấy câu hỏi</h3>
+                        <p>Vui lòng thử lại với các bộ lọc khác</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            
+            questions.forEach((question, index) => {
+                const levelClass = question.do_kho ? `level-${question.do_kho}` : 'level-medium';
+                const levelText = question.do_kho || 'medium';
+                const questionType = question.loai_cau_hoi || 'trac_nghiem';
+                const grade = question.lop || '';
+                
+                let typeIcon = '📝';
+                if (questionType === 'trac_nghiem') typeIcon = '☑️';
+                else if (questionType === 'tu_luan') typeIcon = '✍️';
+                else if (questionType === 'dien_khuyat') typeIcon = '📝';
+                
                 html += `
-                    <tr>
-                        <td>${date}</td>
-                        <td>${result.studentName} (${result.email})</td>
-                        <td>${result.quizFile}</td>
-                        <td>${result.score}/${result.maxScore} (${result.percentage}%)</td>
-                        <td style="color: ${result.status === 'PASS' ? 'green' : 'red'}">${result.status}</td>
-                    </tr>
+                    <div class="question-card">
+                        <div class="question-header">
+                            <div class="question-number">Câu ${index + 1}</div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                ${grade ? `<span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;">Lớp ${grade}</span>` : ''}
+                                <span style="background: #e8f5e8; color: #2e7d32; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;">${typeIcon} ${questionType.replace('_', ' ').toUpperCase()}</span>
+                                <div class="question-level ${levelClass}">${levelText}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="question-content">
+                            ${question.noi_dung || 'Nội dung câu hỏi'}
+                        </div>
+                        
+                        <div class="question-options">
+                            ${generateOptions(question, index)}
+                        </div>
+                        
+                        ${question.giai_thich ? `
+                            <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 4px solid #17a2b8; border-radius: 4px; display: none;" id="explanation-${index}">
+                                <strong>💡 Giải thích:</strong> ${question.giai_thich}
+                            </div>
+                        ` : ''}
+                    </div>
                 `;
             });
-
-            html += '</tbody></table>';
-            resultsContent.innerHTML = html;
+            
+            container.innerHTML = html;
+            
+            // Render MathJax
+            setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([container]);
+                }
+            }, 100);
         }
+
+        function generateOptions(question, questionIndex) {
+            const questionType = question.loai_cau_hoi || 'trac_nghiem';
+            
+            if (questionType === 'tu_luan') {
+                return `<div class="option" style="background: #f8f9fa; font-style: italic;">✍️ Câu hỏi tự luận - học sinh tự trả lời</div>`;
+            }
+            
+            if (questionType === 'dien_khuyat') {
+                return `<div class="option" style="background: #e8f5e8; border-color: #4caf50;">�� Đáp án: <strong>${question.dap_an_dung || 'Đáp án không có'}</strong></div>`;
+            }
+            
+            if (questionType === 'trac_nghiem') {
+                const options = [];
+                ['option_a', 'option_b', 'option_c', 'option_d'].forEach((field, index) => {
+                    if (question[field]) {
+                        const letter = String.fromCharCode(65 + index);
+                        options.push(`
+                            <div class="option" onclick="selectAnswer(${questionIndex}, '${letter}')" id="option-${questionIndex}-${letter}">
+                                <strong>${letter}.</strong> ${question[field]}
+                            </div>
+                        `);
+                    }
+                });
+                return options.join('');
+            }
+            
+            return '<div class="option">Không có lựa chọn</div>';
+        }
+
+        function selectAnswer(questionIndex, answer) {
+            if (!quizMode) return;
+            
+            userAnswers[questionIndex] = answer;
+            
+            // Remove previous selection
+            const options = document.querySelectorAll(`[id^="option-${questionIndex}-"]`);
+            options.forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Add selection
+            const selectedOption = document.getElementById(`option-${questionIndex}-${answer}`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+        }
+
+        function startQuiz() {
+            if (questions.length === 0) {
+                showStatus('❌ Vui lòng tải câu hỏi trước!', 'error');
+                return;
+            }
+            
+            quizMode = true;
+            userAnswers = {};
+            document.getElementById('scoreSection').style.display = 'none';
+            
+            // Reset all selections
+            const options = document.querySelectorAll('.option');
+            options.forEach(option => {
+                option.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            showStatus('🎯 Bắt đầu làm bài! Chọn đáp án cho từng câu hỏi.', 'success');
+        }
+
+        function submitQuiz() {
+            if (!quizMode) {
+                showStatus('❌ Vui lòng bắt đầu làm bài trước!', 'error');
+                return;
+            }
+            
+            let correctAnswers = 0;
+            const totalQuestions = questions.length;
+            
+            questions.forEach((question, index) => {
+                const userAnswer = userAnswers[index];
+                const correctAnswer = question.dap_an_dung;
+                
+                if (userAnswer === correctAnswer) {
+                    correctAnswers++;
+                }
+                
+                // Show correct/incorrect answers
+                const options = document.querySelectorAll(`[id^="option-${index}-"]`);
+                options.forEach(option => {
+                    const letter = option.id.split('-').pop();
+                    if (letter === correctAnswer) {
+                        option.classList.add('correct');
+                    } else if (letter === userAnswer && userAnswer !== correctAnswer) {
+                        option.classList.add('incorrect');
+                    }
+                });
+                
+                // Show explanation
+                const explanation = document.getElementById(`explanation-${index}`);
+                if (explanation) {
+                    explanation.style.display = 'block';
+                }
+            });
+            
+            const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+            
+            document.getElementById('scoreDisplay').textContent = `${correctAnswers}/${totalQuestions}`;
+            document.getElementById('percentage').textContent = `${percentage}%`;
+            document.getElementById('scoreSection').style.display = 'block';
+            
+            quizMode = false;
+            showStatus(`✅ Hoàn thành! Điểm số: ${correctAnswers}/${totalQuestions} (${percentage}%)`, 'success');
+        }
+
+        // Auto-load questions when page loads
+        window.addEventListener('load', () => {
+            showStatus('✅ Sẵn sàng kết nối với Vercel API!', 'success');
+        });
     </script>
 </body>
-</html> 
+</html>
