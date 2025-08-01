@@ -387,6 +387,7 @@
             try {
                 showLoading();
                 
+                // Tạo params cho filtering
                 const params = new URLSearchParams({
                     grade: document.getElementById('grade').value,
                     difficulty: document.getElementById('difficulty').value,
@@ -394,7 +395,8 @@
                     limit: document.getElementById('questionCount').value
                 });
 
-                const response = await fetch(`${API_BASE}/questions?${params}`);
+                // Sử dụng endpoint /api/ với params
+                const response = await fetch(`${API_BASE}/?${params}`);
                 const result = await response.json();
 
                 if (result.success) {
