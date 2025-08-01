@@ -489,7 +489,21 @@
             }
             
             if (questionType === 'dien_khuyat') {
-                return `<div class="option" style="background: #e8f5e8; border-color: #4caf50;">�� Đáp án: <strong>${question.dap_an_dung || 'Đáp án không có'}</strong></div>`;
+                // Thay đổi: Không hiển thị đáp án, chỉ hiển thị ô input
+                return `
+                    <div class="option" style="background: #f8f9fa;">
+                        <label for="answer-${questionIndex}" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                            📝 Nhập đáp án:
+                        </label>
+                        <input 
+                            type="text" 
+                            id="answer-${questionIndex}" 
+                            placeholder="Nhập đáp án của bạn..."
+                            style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 6px; font-size: 16px;"
+                            onchange="selectAnswer(${questionIndex}, this.value)"
+                        >
+                    </div>
+                `;
             }
             
             if (questionType === 'trac_nghiem') {
@@ -559,37 +573,63 @@
             questions.forEach((question, index) => {
                 const userAnswer = userAnswers[index];
                 const correctAnswer = question.dap_an_dung;
+                const questionType = question.loai_cau_hoi || 'trac_nghiem';
                 
-                if (userAnswer === correctAnswer) {
-                    correctAnswers++;
+                if (questionType === 'dien_khuyat') {
+                    // Xử lý câu hỏi điền khuyết
+                    const inputElement = document.getElementById(`answer-${index}`);
+                    if (inputElement) {
+                        const userInput = inputElement.value.trim().toLowerCase();
+                        const correctInput = correctAnswer.toString().toLowerCase();
+                        
+                        if (userInput === correctInput) {
+                            correctAnswers++;
+                            inputElement.style.borderColor = '#4caf50';
+                            inputElement.style.backgroundColor = '#e8f5e8';
+                        } else {
+                            inputElement.style.borderColor = '#f44336';
+                            inputElement.style.backgroundColor = '#ffebee';
+                            // Hiển thị đáp án đúng
+                            inputElement.placeholder = `Đáp án đúng: ${correctAnswer}`;
+                        }
+                        inputElement.disabled = true;
+                    }
+                } else {
+                    // Xử lý câu hỏi trắc nghiệm
+                    if (userAnswer === correctAnswer) {
+                        correctAnswers++;
+                    }
+                    
+                    const options = document.querySelectorAll(`[id^="option-${index}-"]`);
+                    options.forEach(option => {
+                        const letter = option.id.split('-').pop();
+                        if (letter === correctAnswer) {
+                            option.classList.add('correct');
+                        } else if (letter === userAnswer && userAnswer !== correctAnswer) {
+                            option.classList.add('incorrect');
+                        }
+                    });
                 }
                 
-                // Show correct/incorrect answers
-                const options = document.querySelectorAll(`[id^="option-${index}-"]`);
-                options.forEach(option => {
-                    const letter = option.id.split('-').pop();
-                    if (letter === correctAnswer) {
-                        option.classList.add('correct');
-                    } else if (letter === userAnswer && userAnswer !== correctAnswer) {
-                        option.classList.add('incorrect');
-                    }
-                });
-                
-                // Show explanation
+                // Hiển thị giải thích
                 const explanation = document.getElementById(`explanation-${index}`);
                 if (explanation) {
                     explanation.style.display = 'block';
                 }
             });
             
-            const percentage = Math.round((correctAnswers / totalQuestions) * 100);
-            
-            document.getElementById('scoreDisplay').textContent = `${correctAnswers}/${totalQuestions}`;
-            document.getElementById('percentage').textContent = `${percentage}%`;
+            // Hiển thị kết quả
+            const score = Math.round((correctAnswers / totalQuestions) * 100);
+            document.getElementById('scoreSection').innerHTML = `
+                <h3> Kết quả bài làm</h3>
+                <p>Đúng: <strong>${correctAnswers}/${totalQuestions}</strong> câu</p>
+                <p>Điểm: <strong>${score}/100</strong></p>
+                <button class="btn" onclick="startQuiz()">🔄 Làm lại</button>
+            `;
             document.getElementById('scoreSection').style.display = 'block';
             
             quizMode = false;
-            showStatus(`✅ Hoàn thành! Điểm số: ${correctAnswers}/${totalQuestions} (${percentage}%)`, 'success');
+            showStatus(`✅ Hoàn thành! Điểm: ${score}/100`, 'success');
         }
 
         // Auto-load questions when page loads
